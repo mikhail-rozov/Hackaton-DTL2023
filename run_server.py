@@ -24,10 +24,17 @@ def get_answer():                          # Возвращает JSON вида 
     global client_info
 
     request_json = request.get_json()
+    data = {'success': False}
+
     text = request_json['question']
     user_id = request_json['id']
     is_new_chat = request_json['new_chat']
-    data = {'success': False}
+
+    # Защита от длинных запросов
+    if len(text) > 1500:
+        data['answer'] = 'Пожалуйста, перефразируйте более коротко.'
+        data['success'] = True
+        return jsonify(data)
 
     # В случае, если пользователь не знаком боту или поступила команда на перезапуск чата, данные о пользователе
     # приводятся к дефолтным значениям
@@ -61,20 +68,16 @@ def get_answer():                          # Возвращает JSON вида 
             answer = 'Данный индекс не входит в диапазон.'
 
         else:
-            try:
-                # 47.5 µs ± 506 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
-                requirement = re.findall(f'({text}\) )(.*)\n\n\n', df_1.iloc[idx]['Answer'])[0][1]
+            # 47.5 µs ± 506 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
+            requirement = re.findall(f'({text}\) )(.*)\n\n\n', df_1.iloc[idx]['Answer'])[0][1]
 
-                # 241 µs ± 5.32 µs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
-                answer = 'НПА про ' + requirement.lower()[:-1] + ':' + '\n\n' + df_2.loc[df_2['Question'] ==
-                                                                                    requirement, 'Answer'].iloc[0] + \
-                         '\n\n' + 'Могу рассказать об ответственности за невыполнение данного требования. Для ' \
-                                  'этого введите 1. Либо введите 0 для возврата на предыдущий шаг.'
+            # 241 µs ± 5.32 µs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+            answer = 'НПА про ' + requirement.lower()[:-1] + ':' + '\n\n' + df_2.loc[df_2['Question'] ==
+                                                                                requirement, 'Answer'].iloc[0] + \
+                     '\n\n' + 'Могу рассказать об ответственности за невыполнение данного требования. Для ' \
+                              'этого введите 1. Либо введите 0 для возврата на предыдущий шаг.'
 
-                client_info[user_id]['curr_req'] = requirement
-
-            except IndexError:
-                answer = 'Что-то пошло не так. Попробуйте ещё раз.'
+            client_info[user_id]['curr_req'] = requirement
 
         data['success'] = True
 
